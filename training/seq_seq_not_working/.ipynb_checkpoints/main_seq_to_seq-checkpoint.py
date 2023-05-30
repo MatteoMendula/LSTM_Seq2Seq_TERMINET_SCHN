@@ -33,7 +33,7 @@ def find_max_error(predictions, y_test, mean_mse, std_mse):
     return max_errors
 
 # read dataset augmented
-df_reshaped = pd.read_pickle("./df_reshaped.pkl")  
+df_reshaped = pd.read_pickle("../data/PKLs/df_reshaped.pkl")  
 
 # Normalizing the values
 standard_scaler = preprocessing.StandardScaler()

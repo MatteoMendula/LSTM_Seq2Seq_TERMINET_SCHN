@@ -34,11 +34,11 @@ def find_max_error(predictions, y_test, mean_mse, std_mse):
     return max_errors
 
 # read dataset augmented
-df_reshaped = pd.read_pickle("./df_reshaped.pkl")  
+df_reshaped = pd.read_pickle("../data/20230319_RTU_Dataset_PPC-Lab/combined_may2023.pkl")  
 
 # Normalizing the values
 standard_scaler = preprocessing.StandardScaler()
-scaled_df = standard_scaler.fit_transform(df_reshaped[['CPUs', 'MEMs', 'TEMPs']])
+scaled_df = standard_scaler.fit_transform(df_reshaped[['MEM_USAGE', 'CPU_USAGE', 'TEMP']])
 
 training_size = int(len(scaled_df) * 0.8)
 training, testing = scaled_df[0:training_size], scaled_df[training_size:len(scaled_df)]

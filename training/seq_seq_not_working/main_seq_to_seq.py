@@ -10,11 +10,11 @@ from math import sqrt
 from sklearn.metrics import mean_absolute_percentage_error
 import os
 
-def create_sequence(dataset, target, window, future):
+def create_sequence(dataset, window, future):
     x_sequence, y_sequence = [], []
     for index in range(len(dataset) - window - future):
         x_sequence.append(dataset[index: index + window])
-        y_sequence.append(target[index + window + future: index + window + future + 1])
+        y_sequence.append(dataset[index + window + future: index + window + future + 1])
     return (np.asarray(x_sequence), np.asarray(y_sequence))
 
 def evaluate_predictions(predictions_seq, y_test_seq):
@@ -33,7 +33,7 @@ def find_max_error(predictions, y_test, mean_mse, std_mse):
     return max_errors
 
 # read dataset augmented
-df_reshaped = pd.read_pickle("./df_reshaped.pkl")  
+df_reshaped = pd.read_pickle("../data/PKLs/df_reshaped.pkl")  
 
 # Normalizing the values
 standard_scaler = preprocessing.StandardScaler()
@@ -48,8 +48,8 @@ print('Testing examples: %d' % (len(testing)))
 TRAINING_WINDOW_SIZE = 20
 TRAINING_FUTURE_STEPS = 1                   # ----------- 1H
 
-X_train, y_train = create_sequence(training, df_reshaped['CPUs'], TRAINING_WINDOW_SIZE, TRAINING_FUTURE_STEPS)
-X_test, y_test  = create_sequence(testing, df_reshaped['CPUs'], TRAINING_WINDOW_SIZE, TRAINING_FUTURE_STEPS)
+X_train, y_train = create_sequence(training, TRAINING_WINDOW_SIZE, TRAINING_FUTURE_STEPS)
+X_test, y_test  = create_sequence(testing, TRAINING_WINDOW_SIZE, TRAINING_FUTURE_STEPS)
 
 print('X_train: %d' % (len(X_train)))
 print('y_train: %d' % (len(y_train)))
@@ -67,11 +67,11 @@ else:
     model_bi.add(Bidirectional(LSTM(128, return_sequences=True, dropout=0.5)))
     model_bi.add(Bidirectional(LSTM(128, return_sequences=True, dropout=0.5)))
     model_bi.add(Bidirectional(LSTM(20, dropout=0.5)))
-    model_bi.add(Dense(1))
+    model_bi.add(Dense(3))
     model_bi.compile(loss='mse', optimizer='adam')
-    # model_bi.fit(X_train, y_train, batch_size=128, epochs=100)
-    # model_bi.save("./saved_models/model_bi")
-    # print(model_bi.summary())
+    model_bi.fit(X_train, y_train, batch_size=128, epochs=100)
+    model_bi.save("./saved_models/model_bi")
+    print(model_bi.summary())
 
 if os.path.exists("./saved_models/model"):  
     model = load_model("./saved_models/model")
@@ -81,75 +81,88 @@ else:
     model.add(LSTM(128, return_sequences=True, dropout=0.5))
     model.add(LSTM(128, return_sequences=True, dropout=0.5))
     model.add(LSTM(20, dropout=0.5))
-    model.add(Dense(1))
+    model.add(Dense(3))
     model.compile(loss='mse', optimizer='adam')
-    model.fit(X_train, y_train, batch_size=128, epochs=1500)
+    model.fit(X_train, y_train, batch_size=128, epochs=100)
     model.save("./saved_models/model")
     print(model.summary())
 
 
 # -------------- TESTING
 
-# predictions_bi = model_bi.predict(X_test)
+predictions_bi = model_bi.predict(X_test)
 predictions = model.predict(X_test)
-print("predictions.shape", predictions.shape)
+y_test = y_test.reshape(y_test.shape[0], y_test.shape[2])
+y_test = standard_scaler.inverse_transform(y_test)
+print("predictions.shape", predictions_bi.shape)
 print("y_test.shape", y_test.shape)
 
-# CPUs_y_test = y_test[:, 0] 
-# MEMs_y_test = y_test[:, 1] 
-# TEMPs_y_test = y_test[:, 2] 
+predictions = standard_scaler.inverse_transform(predictions)
+predictions_bi = standard_scaler.inverse_transform(predictions_bi)
+
+CPUs_prediction_bi = predictions_bi[:, 0] 
+MEMs_prediction_bi = predictions_bi[:, 1] 
+TEMPs_prediction_bi = predictions_bi[:, 2] 
+
+CPUs_prediction = predictions[:, 0] 
+MEMs_prediction = predictions[:, 1] 
+TEMPs_prediction = predictions[:, 2] 
+
+CPUs_y_test = y_test[:, 0] 
+MEMs_y_test = y_test[:, 1] 
+TEMPs_y_test = y_test[:, 2] 
 
 # MSEs_CPUs = evaluate_predictions(CPUs_prediction, CPUs_y_test)
 # print("np.mean(MSEs)", np.mean(MSEs_CPUs))
 # print("np.std(MSEs)", np.std(MSEs_CPUs))
 
-# MSEs_CPUs_bi = mean_squared_error(predictions, y_test)
-# MAPE_CPUs_bi = mean_absolute_percentage_error(predictions, y_test)
+MSEs_CPUs_bi = mean_squared_error(CPUs_prediction_bi, CPUs_y_test)
+MAPE_CPUs_bi = mean_absolute_percentage_error(CPUs_prediction_bi, CPUs_y_test)
 
-# MSEs_MEMs_bi = mean_squared_error(MEMs_prediction_bi, MEMs_y_test)
-# MAPE_MEMs_bi = mean_absolute_percentage_error(MEMs_prediction_bi, MEMs_y_test)
+MSEs_MEMs_bi = mean_squared_error(MEMs_prediction_bi, MEMs_y_test)
+MAPE_MEMs_bi = mean_absolute_percentage_error(MEMs_prediction_bi, MEMs_y_test)
 
-# MSEs_TEMPs_bi = mean_squared_error(TEMPs_prediction_bi, TEMPs_y_test)
-# MAPE_TEMPs_bi = mean_absolute_percentage_error(TEMPs_prediction_bi, TEMPs_y_test)
+MSEs_TEMPs_bi = mean_squared_error(TEMPs_prediction_bi, TEMPs_y_test)
+MAPE_TEMPs_bi = mean_absolute_percentage_error(TEMPs_prediction_bi, TEMPs_y_test)
 
-# print("-----------------")
-# print("MSEs_CPUs_bi", MSEs_CPUs_bi)
-# print("MAPE_CPUs_bi", MAPE_CPUs_bi)
-# print("-----------------")
-# print("MSEs_MEMs_bi", MSEs_MEMs_bi)
-# print("MAPE_MEMs_bi", MAPE_MEMs_bi)
-# print("-----------------")
-# print("MSEs_TEMPs_bi", MSEs_TEMPs_bi)
-# print("MAPE_TEMPs_bi", MAPE_TEMPs_bi)
-# print("-----------------")
+print("-----------------")
+print("MSEs_CPUs_bi", MSEs_CPUs_bi)
+print("MAPE_CPUs_bi", MAPE_CPUs_bi)
+print("-----------------")
+print("MSEs_MEMs_bi", MSEs_MEMs_bi)
+print("MAPE_MEMs_bi", MAPE_MEMs_bi)
+print("-----------------")
+print("MSEs_TEMPs_bi", MSEs_TEMPs_bi)
+print("MAPE_TEMPs_bi", MAPE_TEMPs_bi)
+print("-----------------")
 
-MSEs_CPUs = mean_squared_error(predictions, y_test)
-MAPE_CPUs = mean_absolute_percentage_error(predictions, y_test)
+MSEs_CPUs = mean_squared_error(CPUs_prediction, CPUs_y_test)
+MAPE_CPUs = mean_absolute_percentage_error(CPUs_prediction, CPUs_y_test)
 
-# MSEs_MEMs = mean_squared_error(MEMs_prediction, MEMs_y_test)
-# MAPE_MEMs = mean_absolute_percentage_error(MEMs_prediction, MEMs_y_test)
+MSEs_MEMs = mean_squared_error(MEMs_prediction, MEMs_y_test)
+MAPE_MEMs = mean_absolute_percentage_error(MEMs_prediction, MEMs_y_test)
 
-# MSEs_TEMPs = mean_squared_error(TEMPs_prediction, TEMPs_y_test)
-# MAPE_TEMPs = mean_absolute_percentage_error(TEMPs_prediction, TEMPs_y_test)
+MSEs_TEMPs = mean_squared_error(TEMPs_prediction, TEMPs_y_test)
+MAPE_TEMPs = mean_absolute_percentage_error(TEMPs_prediction, TEMPs_y_test)
 
 print("-----------------")
 print("MSEs_CPUs", MSEs_CPUs)
 print("MAPE_CPUs", MAPE_CPUs)
 print("-----------------")
-# print("MSEs_MEMs", MSEs_MEMs)
-# print("MAPE_MEMs", MAPE_MEMs)
-# print("-----------------")
-# print("MSEs_TEMPs", MSEs_TEMPs)
-# print("MAPE_TEMPs", MAPE_TEMPs)
-# print("-----------------")
+print("MSEs_MEMs", MSEs_MEMs)
+print("MAPE_MEMs", MAPE_MEMs)
+print("-----------------")
+print("MSEs_TEMPs", MSEs_TEMPs)
+print("MAPE_TEMPs", MAPE_TEMPs)
+print("-----------------")
 
 # print(find_max_error(predictions, y_test, np.mean(MSEs_CPUs), np.std(MSEs_CPUs)))
 
-# df_predictions_bi = pd.DataFrame(predictions_bi, columns = ['CPUs'])
-df_predictions = pd.DataFrame(predictions, columns = ['CPUs'])
+df_predictions_bi = pd.DataFrame(predictions_bi, columns = ['CPUs', 'MEMs', 'TEMPs'])
+df_predictions = pd.DataFrame(predictions, columns = ['CPUs', 'MEMs', 'TEMPs'])
 
-# df_predictions_bi.to_pickle("./predictions/cpu/predictions_bi.pkl")
-df_predictions.to_pickle("./predictions/cpu/predictions.pkl")
+df_predictions_bi.to_pickle("./predictions/predictions_bi.pkl")
+df_predictions.to_pickle("./predictions/predictions.pkl")
 
 # for index in outliers.index: 
 #     outliers[index] = predictions[index]
